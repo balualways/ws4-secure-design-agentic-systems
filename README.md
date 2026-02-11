@@ -58,7 +58,7 @@ Check out our [onboarding guidance for new participants](https://github.com/cosa
 Adds names / GitHub profile links for those who have contributed to this repository. If you have a maintainer's list, link to it here.-->
 
 ## Support
-For issues or features, please use Github issues. You can also join the workstream mailing list by posting an empty email to [cosai-agentic-systems-ws@lists.oasis-open-projects.org](mailto:	cosai-agentic-systems-ws@lists.oasis-open-projects.org). You can read the mailing list archive [here](https://lists.oasis-open-projects.org/g/cosai-agentic-systems-ws/topics).
+For issues or features, please use Github issues. You can also join the workstream mailing list by posting an empty email to [cosai-agentic-systems-ws@lists.oasis-open-projects.org](mailto:cosai-agentic-systems-ws@lists.oasis-open-projects.org). You can read the mailing list archive [here](https://lists.oasis-open-projects.org/g/cosai-agentic-systems-ws/topics).
 
 You can also join us on Slack via [this link](https://join.slack.com/t/cosai-op/shared_invite/zt-2rbgqtolg-GdajCyOiddYtGJ3cSdk1Jg) and introduce yourself in the #ws4-secure-design-agentic-systems channel.
 
