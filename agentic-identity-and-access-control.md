@@ -550,10 +550,8 @@ MCP servers, API gateways, and service meshes SHOULD: authenticate agents using 
 
 When agents interact with web origins, APIs, and intermediary enforcement layers (CDNs, site-protection providers), pre-provisioned identities may be impractical. Two patterns apply:
 
-* **Registry-based:** Emerging standards such as Visa’s Trusted Agent Protocol or ERC-8004 ledger-based registries enumerate known agents. Suited for closed ecosystems with strong onboarding.
-* **Claims-based:** Linked, verifiable, purpose-identifying, time-bound signed credentials presented per request in HTTP headers or bodies. Relying parties validate via JWKS endpoints and apply local trust policy.
-
-In this model, web origins, CDNs, and site-protection providers act as relying parties enforcing enterprise and ecosystem policies at the interaction layer.
+* **Registry-based:** Centralized approaches, such as Visa's Trusted Agent Protocol, suit closed ecosystems with existing commercial and legal advantage, while open-ledger protocols like ERC-8004 use multiple dynamic registries (identity, reputation, validation) to build a layered trust stack, ensuring zero-trust interoperability and preventing vendor lock-in in open ecosystems.
+* **Claims-based:** Verifiable, purpose-scoped, time-bound signed credentials are sent in HTTP headers or bodies per request. Relying parties validate signatures (e.g. via JWKS or DID resolution) and enforce varied local trust policies, often at the interaction layer (Web origins, CDNs, site-protection).
 
 **Cross-domain and federated policies**
 
