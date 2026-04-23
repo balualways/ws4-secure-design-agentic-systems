@@ -1,122 +1,89 @@
 # Runtime Security and Isolation
 
-## **Overview: Runtime Isolation**
+## Overview: Runtime Isolation
 
 This cookbook provides hands-on guidance for isolating and securing MCP
 runtime environments at Runtime.
 
-## **Core Principles of Enterprise MCP Security**
+## Core Principles of Enterprise MCP Security
 
--   **Prefer remote over local:** Run MCP server via streamable HTTP
-    > over local deployment via STDIO in an enterprise environment. In
-    > enterprise deployments, STDIO-based local MCP servers create
-    > operational blind spots. They run in local environments where
-    > centralized logging, monitoring, and policy enforcement are either
-    > absent or inconsistent. When STDIO is unavoidable (developer CLI
-    > tools, local coding assistants), apply OS-level sandboxing
-    > (bubblewrap on Linux, seatbelt on macOS) and treat the local
-    > environment as untrusted. Allocate dedicated resources and enforce
-    > filesystem restrictions even for local deployments
+- **Prefer remote over local**: Run MCP server via streamable HTTP over local
+  deployment via STDIO in an enterprise environment. In enterprise deployments,
+  STDIO-based local MCP servers create operational blind spots. They run in
+  local environments where centralized logging, monitoring, and policy
+  enforcement are either absent or inconsistent. When STDIO is unavoidable
+  (developer CLI tools, local coding assistants), apply OS-level sandboxing
+  (bubblewrap on Linux, seatbelt on macOS) and treat the local environment as
+  untrusted. Allocate dedicated resources and enforce filesystem restrictions
+  even for local deployments.
 
--   **Sandbox isolation**: Execute tools in a sandbox or restricted
-    > environment when possible
+- **Sandbox isolation**: Execute tools in a sandbox or restricted environment when
+  possible.
 
--   **Label-Based Control:** Implement Mandatory Access Control (MAC)
-    > where every object has a classification and every agent session
-    > has a clearance ceiling enforced externally to the agent.
+- **Label-Based Control**: Implement Mandatory Access Control (MAC) where every
+  object has a classification and every agent session has a clearance ceiling
+  enforced externally to the agent.
 
--   **Principle of Least Agency:** Do not make tools overly permissive;
-    > execute them in sandboxed environments with strict resource
-    > limits
+- **Principle of Least Agency**: Do not make tools overly permissive; execute them
+  in sandboxed environments with strict resource limits.
 
--   **Hardware-Level Trust for sensitive MCP servers:** Run sensitive
-    > MCP servers in Trusted Execution Environments (TEEs) and use
-    > remote attestation to verify trustworthiness before
-    > interaction
+- **Hardware-Level Trust for sensitive MCP servers**: Run sensitive MCP servers in
+  Trusted Execution Environments (TEEs) and use remote attestation to verify
+  trustworthiness before interaction.
 
-## **Related Security Framework Resources**
+## Related Security Framework Resources
 
 Enterprise environments must select isolation technologies based on the
 specific risk profile of the workload---ranging from lightweight OS
 primitives to high-assurance hardware isolation
 
--   Standard Linux Security Features
+- Standard Linux Security Features
+    - Linux User Management
+    - Linux File Access Control
+    - chroot
+    - Namespace
+    - Cgroups
 
-    -   Linux User Management
+- Security Modules and Kernel Hooks
+    - Landlock
+    - Seccomp
+    - AppArmor
+    - SELinux
+    - Firejail
 
-    -   Linux File Access Control
+- Process-level Container Runtime
+    - bubblewrap (Linux)
+    - Seatbelt (macOS)
+    - Endpoint Security library (macOS)
 
-    -   chroot
+- Cloud Environments
+    - Amazon Bedrock AgentCore Runtime
+    - Google Cloud Run
 
-    -   Namespace
+- Full Container and Runtime Isolation
+    - Docker
+    - gVisor
+    - Sysbox
+    - Kubernetes
+        - Admission Control
+        - Pod Security Context
+        - Node Isolation
 
-    -   Cgroups
+- Virtual Machines
+    - KVM/QEMU
+    - Kata Containers
+    - Firecracker
+    - KubeVirt
 
--   Security Modules and Kernel Hooks
-
-    -   Landlock
-
-    -   Seccomp
-
-    -   AppArmor
-
-    -   SELinux
-
-    -   Firejail
-
--   Process-level Container Runtime
-
-    -   bubblewrap (Linux)
-
-    -   Seatbelt (macOS)
-
-    -   Endpoint Security library (macOS)
-
--   Cloud Environments
-
-    -   Amazon Bedrock AgentCore Runtime
-
-    -   Google Cloud Run
-
--   Full Container and Runtime Isolation
-
-    -   Docker
-
-    -   gVisor
-
-    -   Sysbox
-
-    -   Kubernetes
-
-        -   Admission Control
-
-        -   Pod Security Context
-
-        -   Node Isolation
-
--   Virtual Machines
-
-    -   KVM/QEMU
-
-    -   Kata Containers
-
-    -   Firecracker
-
-    -   KubeVirt
-
--   Confidentiality & Integrity /Zero Trust
-
-    -   Trusted Execution Environments
+- Confidentiality & Integrity /Zero Trust
+    - Trusted Execution Environments
 
 ## Types of Resources to Manage/Isolate/Control
 
-1.  File system and individual file access
-
-2.  Network access
-
-3.  Computing resources like CPU/memory
-
-4.  OS information
+1. File system and individual file access
+2. Network access
+3. Computing resources like CPU/memory
+4. OS information
 
 It is a standard security practice to allocate resources for remotely
 managed runtime, while it is equally critical to consider resources
@@ -188,9 +155,9 @@ written in Go. It integrates with Docker as an OCI-compliant runtime (runsc), re
 the standard host kernel interaction with a restricted interface that prevents a
 compromised container from accessing the underlying host operating system.
 
-**Running GitHub MCP server in gVisor hardened Docker image**
+#### Running GitHub MCP server in gVisor hardened Docker image
 
-1. **Install [runsc](https://gvisor.dev/docs/user_guide/install/) and configure gVisor as Docker runtime**
+1. Install [runsc](https://gvisor.dev/docs/user_guide/install/) and configure gVisor as Docker runtime
 
    ```bash
    (
@@ -208,14 +175,14 @@ compromised container from accessing the underlying host operating system.
    )
    ```
 
-2. **Configure Docker runtime**
+2. Configure Docker runtime
 
    ```bash
    sudo runsc install
    sudo systemctl restart docker
    ```
 
-3. **Create a hardened MCP image**
+3. Create a hardened MCP image
 
    ```dockerfile
    # Use a slim, stable base image
@@ -233,13 +200,13 @@ compromised container from accessing the underlying host operating system.
    ENTRYPOINT ["mcp-server-github"]
    ```
 
-4. **Build image**
+4. Build image
 
    ```bash
    docker build -t secure-github-mcp:v1 .
    ```
 
-5. **Launch with enterprise-grade isolation**
+5. Launch with enterprise-grade isolation
 
    ```bash
    docker run -i --rm \
@@ -256,167 +223,135 @@ compromised container from accessing the underlying host operating system.
 
 ### Linux User Management & File Access Control (without container/VM)
 
-1.  Create a dedicated user for MCP server processes:
+1. Create a dedicated user for MCP server processes:
 
-> sudo useradd -s /sbin/nologin -m -c \"MCP Server\" mcp
+```bash
+sudo useradd -s /sbin/nologin -m -c \"MCP Server\" mcp
+```
 
-2.  The user has read-write access to its home directory /home/mcp. For
-    > example, it can write notes in text files as memory, checkout
-    > github repos, and install software such as uv for Python
-    > environments.
-3.  Share files that are read-only to the mcp user by creating a
-    > directory with other permission to read and execute but is not
-    > owned by mcp user.
-4.  Share files and allow MCP server to edit, copy files into /home/mcp
-    > and assign mcp as the owner:
+2. The user has read-write access to its home directory /home/mcp. For example, it can write notes in text files as memory, checkout github repos, and install software such as uv for Python environments.
+3. Share files that are read-only to the mcp user by creating a directory with other permission to read and execute but is not owned by mcp user.
+4. Share files and allow MCP server to edit, copy files into /home/mcp and assign mcp as the owner:
 
-> chown mcp:mcp /home/mcp/sharedfiles
+```bash
+chown mcp:mcp /home/mcp/sharedfiles
+```
 
-5.  Launch the local MCP server with mcp user
+5. Launch the local MCP server with mcp user
 
-> sudo -u mcp-server-proc
+```bash
+sudo -u mcp-server-proc
+```
 
-6.  Further file system access, e.g., whitelist executables, can be done
-    > through chroot environment
+6. Further file system access, e.g., whitelist executables, can be done
+   through chroot environment
 
 ### Linux Namespace & Control Groups (without container/VM)
 
--   Network access can be managed through Linux network namespace:
--   Execute the MCP server process in a new network namespace without
-    > existing host networks, e.g., Internet
+-  Network access can be managed through Linux network namespace:
+-  Execute the MCP server process in a new network namespace without
+   existing host networks, e.g., Internet
 
-> unshare \--user \--net mcp-server-proc
+```bash
+unshare \--user \--net mcp-server-proc
+```
 
--   Create and configure Linux network namespaces for the MCP server and
-    > launch the MCP process with ip netns exec
--   CPU/memory access can be managed by Linux Control Groups (cgroups)
--   Launch the MCP server process with only CPU 0 and 1:
+- Create and configure Linux network namespaces for the MCP server and
+  launch the MCP process with ip netns exec
+- CPU/memory access can be managed by Linux Control Groups (cgroups)
+- Launch the MCP server process with only CPU 0 and 1:
 
-> systemd-run \--scope -p AllowedCPUs=0,1 mcp-server-proc
+```bash
+systemd-run \--scope -p AllowedCPUs=0,1 mcp-server-proc
+```
 
 ### Firecracker
 
--   Use Jailer to start firecracker
+- Use Jailer to start firecracker
 
--   Specify CPU/memory limit when setting up the microVM
+- Specify CPU/memory limit when setting up the microVM
 
-> curl \--unix-socket \"\${API_SOCKET}\" -i \\
->
-> -X PUT \"http://localhost/machine-config\" \\
->
-> -H \"Content-Type: application/json\" \\
->
-> -d \'{
->
-> \"vcpu_count\": 1,
->
-> \"mem_size_mib\": 512,
->
-> \"ht_enabled\": false
->
-> }\'
+```bash
+curl --unix-socket "${API_SOCKET}" -i \
+  -X PUT "http://localhost/machine-config" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vcpu_count": 1,
+    "mem_size_mib": 512,
+    "ht_enabled": false
+}'
+```
 
--   Attach (or not) network interfaces to a microVM
+- Attach (or not) network interfaces to a microVM
 
-> curl \--unix-socket \"\${API_SOCKET}\" -i \\
->
-> -X PUT \"http://localhost/network-interfaces/iface_1\" \\
->
-> -H \"Content-Type: application/json\" \\
->
-> -d \'{
->
-> \"iface_id\": \"iface_1\",
->
-> \"host_dev_name\": \"fctap1\",
->
-> \"guest_mac\": \"06:00:c0:a8:34:02\"
->
-> }\'
+```bash
+curl --unix-socket "${API_SOCKET}" -i \
+    -X PUT "http://localhost/network-interfaces/iface_1" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "iface_id": "iface_1",
+        "host_dev_name": "fctap1",
+        "guest_mac": "06:00:c0:a8:34:02"
+    }'
+```
+- Attach (or not) read-only data drives
 
--   Attach (or not) read-only data drives
+```bash
+curl --unix-socket "${API_SOCKET}" -i \
+    -X PUT "http://localhost/drives/data_drive" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "drive_id": "data_drive",
+        "path_on_host": "/data/project.data.ext4",
+        "is_root_device": false,
+        "is_read_only": true
+    }'
+```
 
-> curl \--unix-socket \"\${API_SOCKET}\" -i \\
->
-> -X PUT \"http://localhost/drives/data_drive\" \\
->
-> -H \"Content-Type: application/json\" \\
->
-> -d \'{
->
-> \"drive_id\": \"data_drive\",
->
-> \"path_on_host\": \"/data/project.data.ext4\",
->
-> \"is_root_device\": false,
->
-> \"is_read_only\": true
->
-> }\'
+- Setup rate limiter for network and block storage (use HTTP PUT for
+  pre-boot setup)
 
--   Setup rate limiter for network and block storage (use HTTP PUT for
-    > pre-boot setup)
 
-> curl \--unix-socket \"\${API_SOCKET}\" -i \\
->
-> -X PATCH \'http://localhost/network-interfaces/iface_1\' \\
->
-> -H \'Accept: application/json\' \\
->
-> -H \'Content-Type: application/json\' \\
->
-> -d \'{
->
-> \"iface_id\": \"iface_1\",
->
-> \"rx_rate_limiter\": {
->
-> \"bandwidth\": {
->
-> \"size\": 1048576, // 1 MB limit
->
-> \"one_time_burst\": 10485760, // 10 MB burst
->
-> \"refill_time\": 1000
->
-> },
->
-> \"ops\": {
->
-> \"size\": 2000,
->
-> \"refill_time\": 1000
->
-> }
->
-> }
->
-> }\'
+```bash
+curl --unix-socket "${API_SOCKET}" -i \
+    -X PATCH 'http://localhost/network-interfaces/iface_1' \
+    -H 'Accept: application/json' \
+    -H 'Content-Type: application/json' \
+    -d '{
+        "iface_id": "iface_1",
+        "rx_rate_limiter": {
+            "bandwidth": {
+                "size": 1048576, // 1 MB limit
+                "one_time_burst": 10485760, // 10 MB burst
+                "refill_time": 1000
+            },
+            "ops": {
+                "size": 2000,
+                "refill_time": 1000
+            }
+        }
+    }'
+```
 
--   Setup environment variables using MMDS
+- Setup environment variables using MMDS
 
-> curl \--unix-socket \"\${API_SOCKET}\" -i \\
->
-> -X PUT \"http://localhost/mmds\" \\
->
-> -H \"Content-Type: application/json\" \\
->
-> -d \'{
->
-> \"MY_ENV_VAR\": \"first message\",
->
-> \"DB_HOST\": \"172.10.0.1\",
->
-> \"APP_ENV\": \"testing\"
->
-> }\'
+```bash
+curl --unix-socket "${API_SOCKET}" -i \
+    -X PUT "http://localhost/mmds" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "MY_ENV_VAR": "first message",
+        "DB_HOST": "172.10.0.1",
+        "APP_ENV": "testing"
+    }'
+```
 
--   Selectively share files/directories between host and microVM via
-    > NFS/Samba/sshfs
+- Selectively share files/directories between host and microVM via
+  NFS/Samba/sshfs
 
 ## Agent and MCP isolation with Confidential Computing & Trusted Execution Environments 
 
-## **1. Introduction**
+### 1. Introduction
 
 **MCP (Model Context Protocol)** is an Open protocol from Anthropic (Nov
 2024) that standardizes how LLM applications connect to external data
@@ -448,7 +383,7 @@ sources and tools.
     > services verify an environment's trustworthiness before sharing
     > sensitive data or credentials.
 
-## **2. MCP Client-Server Communication: An Overview**
+### 2. MCP Client-Server Communication: An Overview
 
 MCP is a standard protocol that lets AI applications (clients) access
 data and tools (servers) through a consistent interface---similar in
@@ -480,7 +415,7 @@ role to USB for devices or HTTP for the web.
 -   *Sampling*: Server-initiated requests for the client to generate
     > completions, enabling agentic behaviors and multi-step workflows.
 
-## **3. RATS (Remote ATtestation procedureS) Architecture**
+### 3. RATS (Remote ATtestation procedureS) Architecture
 
 RATS (IETF RFC 9334) defines a standard model for remote attestation in
 confidential computing. It specifies roles, terminology, and interaction
@@ -585,7 +520,7 @@ IETF RATS has two deployment patterns.
     > Background Check only for scenarios that require live, per-client
     > verification.
 
-## **4. Security Risks Mitigated**
+### 4. Security Risks Mitigated
 
 4.1. *Inadequate data protection & confidentiality (MCP‑T5)* : TEEs
 encrypt memory and isolate runtime, preventing extraction of in‑use
@@ -615,13 +550,13 @@ same physical host.
 *Caveat:* isolation reduces direct memory attacks; side‑channel risks
 require additional mitigations.
 
-## **5. Deployment Scenario**
+### 5. Deployment Scenario
 
 The deployment of components in an MCP Client-Server architecture in the
 context of Confidential Computing could involve two different deployment
 scenarios.
 
-**Scenario 1 - MCP Server Attestation (Servers in TEEs):**
+#### Scenario 1 - MCP Server Attestation (Servers in TEEs):
 
 -   *Description:* MCP servers run inside TEEs; clients verify the
     > server's attestation before interacting or sharing sensitive data.
@@ -644,7 +579,7 @@ scenarios.
 
 > Fig. MCP servers being attested
 
-**Scenario 2 - Mutual Attestation (Clients and Servers in TEEs):**
+#### Scenario 2 - Mutual Attestation (Clients and Servers in TEEs):
 
 -   Description: Both MCP clients and servers run in TEEs and perform
     > mutual attestation before any interaction.
@@ -669,7 +604,7 @@ scenarios.
 
 Fig. Mutual Attestation
 
-## **6. High Level Architecture**
+### 6. High Level Architecture
 
 This architecture covers server-side attestation in TEEs under the
 Passport model; attestation is preferably initiated on client
@@ -702,7 +637,7 @@ Limitations: attestation proves runtime integrity and freshness but does
 not ensure secure application logic or protection against side channels,
 so application-level security practices remain necessary.
 
-**6.1. Extension of the flow to support client specific token**
+#### 6.1. Extension of the flow to support client specific token
 
 *Client-specific tokens (Using the Background model):* For per-session
 freshness, a client supplies a nonce in its initialization request, the
@@ -711,11 +646,11 @@ Service verifies the quote contains that nonce before issuing a
 client-specific JWT that must be validated by the client and not reused
 across other sessions.
 
-## **6.2. Sequence Diagram**
+#### 6.2. Sequence Diagram
 
 ![](../assets/runtime-isolation6.jpg)
 
-## **7. Protocol Extension Details**
+### 7. Protocol Extension Details
 
 There are primarily 2 types of communication modes(transports) in MCP:
 
@@ -905,7 +840,7 @@ Content-Type: application/json
 >
 > \`\`\`
 
-**8. Reference Architecture with Deployment instructions**
+### 8. Reference Architecture with Deployment instructions
 
 This section presents a reference architecture, deployment guidance, and
 reference code demonstrating how to deploy an MCP client and an MCP
@@ -934,7 +869,7 @@ Prerequisites and assumptions:
 
 -   Local Ollama installation for LLM serving (if running locally).
 
-8.1. Reference architecture
+#### 8.1. Reference architecture
 
 ![](../assets/runtime-isolation4.jpg)
 
@@ -984,7 +919,7 @@ Attestation flow (high level)
 -   Client validates the token and continues only if validation
     > succeeds.
 
-8.2. Creating a TD VM on Azure
+#### 8.2. Creating a TD VM on Azure
 
 To host the MCP server in a trusted execution environment, create an
 Azure Trusted Domain VM (TDVM). Azure DC2es_v6 VMs support Intel TDX for
@@ -1042,7 +977,7 @@ Note:
 -   For production, configure disk encryption and additional security
     > settings.
 
-8.3. Deploying your MCP applications in Azure VMs
+#### 8.3. Deploying your MCP applications in Azure VMs
 
 After provisioning the Azure VMs, deploy the MCP client, MCP server, and
 Ollama LLM as follows:
@@ -1110,7 +1045,7 @@ E. Running the MCP client
 > ./mcp-client \--config mcp-client-config.json \--query \"Subtract 4
 > from 2\"
 
-8.4. Sample Configurations
+#### 8.4. Sample Configurations
 
 A.  Client configuration:
 
@@ -1168,9 +1103,9 @@ B.  Server Configuration:
 
 }
 
-## **9. Reference Implementation**
+### 9. Reference Implementation
 
-9.1. MCP client Reference code
+#### 9.1. MCP client Reference code
 
 -   *Requesting attestation token*: On every request, the client
     > indicates it requires attestation by setting the Attestation:
@@ -1245,7 +1180,7 @@ return nil, fmt.Errorf(\"attestation token validation failed: %w\", err)
 
 }
 
-9.2. MCP server reference code
+#### 9.2. MCP server reference code
 
 -   *Adding the attestation header*: The server inspects incoming
     > requests for the \"Attestation\" header. If the client requires
@@ -1415,7 +1350,7 @@ return &response.Token, nil
 
 }
 
-9.3. Logs
+#### 9.3. Logs
 
 -   Request
 
