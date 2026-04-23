@@ -349,6 +349,201 @@ curl --unix-socket "${API_SOCKET}" -i \
 - Selectively share files/directories between host and microVM via
   NFS/Samba/sshfs
 
+### Kubernetes
+
+#### Lock kubectl to a namespace
+
+Create and use isolated namespaces:
+
+```bash
+kubectl create namespace backend
+kubectl create namespace frontend
+kubectl config set-context --current --namespace=backend
+kubectl config view --minify | grep namespace:
+```
+
+#### Harden pod security contexts
+
+Example hardened pod manifest:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hardened-pod
+  namespace: secure-apps
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: app
+      image: nginx:1.27
+      securityContext:
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      ports:
+        - containerPort: 8080
+```
+
+Apply it:
+
+```bash
+kubectl apply -f hardened-pod.yaml
+```
+
+#### Review and reduce RBAC privileges
+
+List cluster-admin bindings:
+
+```bash
+kubectl get clusterrolebinding -o wide | grep cluster-admin
+```
+
+List all RoleBindings and ClusterRoleBindings:
+
+```bash
+kubectl get rolebinding,clusterrolebinding -A
+```
+
+Check what a principal can do:
+
+```bash
+kubectl auth can-i --list -n secure-apps
+kubectl auth can-i create pods --as=system:serviceaccount:secure-apps:app-sa -n secure-apps
+```
+
+Example least-privilege Role and RoleBinding:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-reader
+  namespace: secure-apps
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: app-read-pods
+  namespace: secure-apps
+subjects:
+  - kind: ServiceAccount
+    name: app-sa
+    namespace: secure-apps
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pod-reader
+```
+
+Apply it:
+
+```bash
+kubectl apply -f rbac-pod-reader.yaml
+```
+
+#### Use deny-by-default NetworkPolicies
+
+Default deny all ingress and egress in a namespace:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: secure-apps
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+```
+
+Allow frontend -> backend only on TCP/8080:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-only-from-frontend
+  namespace: secure-apps
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+      ports:
+        - protocol: TCP
+          port: 8080
+```
+
+Apply:
+
+```bash
+kubectl apply -f default-deny-all.yaml
+kubectl apply -f backend-only-from-frontend.yaml
+```
+
+#### Scan images for vulnerabilities and secrets
+
+Scan an image with Trivy:
+
+```bash
+trivy image --severity HIGH,CRITICAL registry.example.com/myapp:latest
+```
+
+Scan a filesystem or repo for secrets with Gitleaks:
+
+```bash
+gitleaks detect --source .
+```
+
+Scan workloads currently running in the cluster:
+
+```bash
+kubectl get pods -A -o jsonpath='{range .items[*]}{.spec.containers[*].image}{"\n"}{end}' | tr ' ' '\n' | sort -u
+```
+
+#### Tighten etcd access
+
+Check whether etcd ports are listening on control plane nodes:
+
+```bash
+ss -lntp | grep -E '2379|2380'
+```
+
+Example host firewall rules allowing etcd only from the API server network:
+
+```bash
+iptables -A INPUT -p tcp -s <apiserver-cidr> --dport 2379 -j ACCEPT
+iptables -A INPUT -p tcp -s <apiserver-cidr> --dport 2380 -j ACCEPT
+iptables -A INPUT -p tcp --dport 2379 -j DROP
+iptables -A INPUT -p tcp --dport 2380 -j DROP
+```
+
+Verify etcd uses TLS client auth in its manifest/config by inspecting static pod args:
+
+```bash
+grep -E -- '--client-cert-auth|--trusted-ca-file|--cert-file|--key-file' /etc/kubernetes/manifests/etcd.yaml
+```
+
 ## Agent and MCP isolation with Confidential Computing & Trusted Execution Environments 
 
 ### 1. Introduction
