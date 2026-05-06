@@ -225,45 +225,45 @@ compromised container from accessing the underlying host operating system.
 
 1. Create a dedicated user for MCP server processes:
 
-```bash
-sudo useradd -s /sbin/nologin -m -c \"MCP Server\" mcp
-```
+   ```bash
+   sudo useradd -s /sbin/nologin -m -c \"MCP Server\" mcp
+   ```
 
-2. The user has read-write access to its home directory /home/mcp. For example, it can write notes in text files as memory, checkout github repos, and install software such as uv for Python environments.
+2. The user has read-write access to its home directory `/home/mcp`. For example, it can write notes in text files as memory, checkout github repos, and install software such as uv for Python environments.
 3. Share files that are read-only to the mcp user by creating a directory with other permission to read and execute but is not owned by mcp user.
 4. Share files and allow MCP server to edit, copy files into /home/mcp and assign mcp as the owner:
 
-```bash
-chown mcp:mcp /home/mcp/sharedfiles
-```
+   ```bash
+   chown mcp:mcp /home/mcp/sharedfiles
+   ```
 
 5. Launch the local MCP server with mcp user
 
-```bash
-sudo -u mcp-server-proc
-```
+   ```bash
+   sudo -u mcp-server-proc
+   ```
 
 6. Further file system access, e.g., whitelist executables, can be done
    through chroot environment
 
 ### Linux Namespace & Control Groups (without container/VM)
 
--  Network access can be managed through Linux network namespace:
--  Execute the MCP server process in a new network namespace without
-   existing host networks, e.g., Internet
+- Network access can be managed through Linux network namespace:
+- Execute the MCP server process in a new network namespace without
+  existing host networks, e.g., Internet
 
-```bash
-unshare \--user \--net mcp-server-proc
-```
+  ```bash
+  unshare \--user \--net mcp-server-proc
+  ```
 
 - Create and configure Linux network namespaces for the MCP server and
   launch the MCP process with ip netns exec
 - CPU/memory access can be managed by Linux Control Groups (cgroups)
 - Launch the MCP server process with only CPU 0 and 1:
 
-```bash
-systemd-run \--scope -p AllowedCPUs=0,1 mcp-server-proc
-```
+   ```bash
+   systemd-run \--scope -p AllowedCPUs=0,1 mcp-server-proc
+   ```
 
 ### Firecracker
 
@@ -271,87 +271,87 @@ systemd-run \--scope -p AllowedCPUs=0,1 mcp-server-proc
 
 - Specify CPU/memory limit when setting up the microVM
 
-```bash
-curl --unix-socket "${API_SOCKET}" -i \
-  -X PUT "http://localhost/machine-config" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "vcpu_count": 1,
-    "mem_size_mib": 512,
-    "ht_enabled": false
-}'
-```
+  ```bash
+  curl --unix-socket "${API_SOCKET}" -i \
+    -X PUT "http://localhost/machine-config" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "vcpu_count": 1,
+      "mem_size_mib": 512,
+      "ht_enabled": false
+  }'
+  ```
 
 - Attach (or not) network interfaces to a microVM
 
-```bash
-curl --unix-socket "${API_SOCKET}" -i \
-    -X PUT "http://localhost/network-interfaces/iface_1" \
-    -H "Content-Type: application/json" \
-    -d '{
-        "iface_id": "iface_1",
-        "host_dev_name": "fctap1",
-        "guest_mac": "06:00:c0:a8:34:02"
-    }'
-```
+  ```bash
+  curl --unix-socket "${API_SOCKET}" -i \
+      -X PUT "http://localhost/network-interfaces/iface_1" \
+      -H "Content-Type: application/json" \
+      -d '{
+          "iface_id": "iface_1",
+          "host_dev_name": "fctap1",
+          "guest_mac": "06:00:c0:a8:34:02"
+      }'
+  ```
+
 - Attach (or not) read-only data drives
 
-```bash
-curl --unix-socket "${API_SOCKET}" -i \
-    -X PUT "http://localhost/drives/data_drive" \
-    -H "Content-Type: application/json" \
-    -d '{
-        "drive_id": "data_drive",
-        "path_on_host": "/data/project.data.ext4",
-        "is_root_device": false,
-        "is_read_only": true
-    }'
-```
+  ```bash
+  curl --unix-socket "${API_SOCKET}" -i \
+      -X PUT "http://localhost/drives/data_drive" \
+      -H "Content-Type: application/json" \
+      -d '{
+          "drive_id": "data_drive",
+          "path_on_host": "/data/project.data.ext4",
+          "is_root_device": false,
+          "is_read_only": true
+      }'
+  ```
 
 - Setup rate limiter for network and block storage (use HTTP PUT for
   pre-boot setup)
 
-
-```bash
-curl --unix-socket "${API_SOCKET}" -i \
-    -X PATCH 'http://localhost/network-interfaces/iface_1' \
-    -H 'Accept: application/json' \
-    -H 'Content-Type: application/json' \
-    -d '{
-        "iface_id": "iface_1",
-        "rx_rate_limiter": {
-            "bandwidth": {
-                "size": 1048576, // 1 MB limit
-                "one_time_burst": 10485760, // 10 MB burst
-                "refill_time": 1000
-            },
-            "ops": {
-                "size": 2000,
-                "refill_time": 1000
-            }
-        }
-    }'
-```
+  ```bash
+  curl --unix-socket "${API_SOCKET}" -i \
+      -X PATCH 'http://localhost/network-interfaces/iface_1' \
+      -H 'Accept: application/json' \
+      -H 'Content-Type: application/json' \
+      -d '{
+          "iface_id": "iface_1",
+          "rx_rate_limiter": {
+              "bandwidth": {
+                  "size": 1048576, // 1 MB limit
+                  "one_time_burst": 10485760, // 10 MB burst
+                  "refill_time": 1000
+              },
+              "ops": {
+                  "size": 2000,
+                  "refill_time": 1000
+              }
+          }
+      }'
+  ```
 
 - Setup environment variables using MMDS
 
-```bash
-curl --unix-socket "${API_SOCKET}" -i \
-    -X PUT "http://localhost/mmds" \
-    -H "Content-Type: application/json" \
-    -d '{
-        "MY_ENV_VAR": "first message",
-        "DB_HOST": "172.10.0.1",
-        "APP_ENV": "testing"
-    }'
-```
+  ```bash
+  curl --unix-socket "${API_SOCKET}" -i \
+      -X PUT "http://localhost/mmds" \
+      -H "Content-Type: application/json" \
+      -d '{
+          "MY_ENV_VAR": "first message",
+          "DB_HOST": "172.10.0.1",
+          "APP_ENV": "testing"
+      }'
+  ```
 
 - Selectively share files/directories between host and microVM via
   NFS/Samba/sshfs
 
 ### Kubernetes
 
-#### Lock kubectl to a namespace
+#### Lock kubectl to a Namespace
 
 Create and use isolated namespaces:
 
@@ -362,7 +362,7 @@ kubectl config set-context --current --namespace=backend
 kubectl config view --minify | grep namespace:
 ```
 
-#### Harden pod security contexts
+#### Harden Pod Security Contexts
 
 Example hardened pod manifest:
 
@@ -398,7 +398,7 @@ Apply it:
 kubectl apply -f hardened-pod.yaml
 ```
 
-#### Review and reduce RBAC privileges
+#### Review and Reduce RBAC Privileges
 
 List cluster-admin bindings:
 
@@ -501,7 +501,7 @@ kubectl apply -f default-deny-all.yaml
 kubectl apply -f backend-only-from-frontend.yaml
 ```
 
-#### Scan images for vulnerabilities and secrets
+#### Scan Images for Vulnerabilities and Secrets
 
 Scan an image with Trivy:
 
@@ -521,7 +521,7 @@ Scan workloads currently running in the cluster:
 kubectl get pods -A -o jsonpath='{range .items[*]}{.spec.containers[*].image}{"\n"}{end}' | tr ' ' '\n' | sort -u
 ```
 
-#### Tighten etcd access
+#### Tighten etcd Access
 
 Check whether etcd ports are listening on control plane nodes:
 
@@ -544,73 +544,34 @@ Verify etcd uses TLS client auth in its manifest/config by inspecting static pod
 grep -E -- '--client-cert-auth|--trusted-ca-file|--cert-file|--key-file' /etc/kubernetes/manifests/etcd.yaml
 ```
 
-## Agent and MCP isolation with Confidential Computing & Trusted Execution Environments 
+## Isolation with Confidential Computing & Trusted Execution Environments 
 
-### 1. Introduction
+#### Confidential Computing & TEEs
 
-**MCP (Model Context Protocol)** is an Open protocol from Anthropic (Nov
-2024) that standardizes how LLM applications connect to external data
-sources and tools.
+- Trusted Execution Environments (TEEs) like Intel TDX and AMD SEV
+  protect code and data in use.
 
-**Confidential computing & TEEs**
+- TEEs prevent access by administrators, compromised software, network
+  attackers, and tampered firmware; only the processor can view
+  plaintext.
 
--   Trusted Execution Environments (TEEs) like Intel TDX and AMD SEV
-    > protect code and data in use.
+- Modern CPUs/GPUs commonly include TEE support.
 
--   TEEs prevent access by administrators, compromised software, network
-    > attackers, and tampered firmware; only the processor can view
-    > plaintext.
+#### Remote Attestation and Attestation Providers
 
--   Modern CPUs/GPUs commonly include TEE support.
--   
+- Remote attestation proves that code runs on genuine, uncompromised
+  TEE hardware.
 
-**Remote attestation and attestation providers**
+- An attestation provider (e.g., Intel Trust Authority,
+  Azure/Microsoft Attestation, Google Cloud Attestation, or DIY)
+  validates platform evidence and issues cryptographically signed
+  tokens (JWTs).
 
--   Remote attestation proves that code runs on genuine, uncompromised
-    > TEE hardware.
+- These tokens let MCP components, key management, and identity
+  services verify an environment's trustworthiness before sharing
+  sensitive data or credentials.
 
--   An attestation provider (e.g., Intel Trust Authority,
-    > Azure/Microsoft Attestation, Google Cloud Attestation, or DIY)
-    > validates platform evidence and issues cryptographically signed
-    > tokens (JWTs).
-
--   These tokens let MCP components, key management, and identity
-    > services verify an environment's trustworthiness before sharing
-    > sensitive data or credentials.
-
-### 2. MCP Client-Server Communication: An Overview
-
-MCP is a standard protocol that lets AI applications (clients) access
-data and tools (servers) through a consistent interface---similar in
-role to USB for devices or HTTP for the web.
-
-**Key features:**
-
--   *Client-server model*: Clients (LLMs/agents) connect to servers that
-    > expose resources, tools, or APIs.
-
--   *Standard messages*: Uniform request/response formats for data
-    > access, tool invocation, and resource management.
-
--   *Flexible transport*: Supports local integrations (stdin/stdout) and
-    > remote connections (HTTP with Server-Sent Events).
--   
-
-**Core concepts:**
-
--   *Resources*: Readable data (files, DB records, API responses)
-    > identified by URIs; can be text or binary.
-
--   *Prompts*: Templated instructions or starter contexts servers
-    > provide to streamline common tasks.
-
--   Tools: Invokable functions that perform operations or return dynamic
-    > results (distinct from static resources).
-
--   *Sampling*: Server-initiated requests for the client to generate
-    > completions, enabling agentic behaviors and multi-step workflows.
-
-### 3. RATS (Remote ATtestation procedureS) Architecture
+### RATS (Remote ATtestation procedureS) Architecture
 
 RATS (IETF RFC 9334) defines a standard model for remote attestation in
 confidential computing. It specifies roles, terminology, and interaction
@@ -620,132 +581,123 @@ the problem of verifying a system's execution environment
 remotely---without physical access---so other systems can decide whether
 to trust it.
 
-*3.1. Key Roles*
+#### Key Roles
 
--   **Attester:** Produces Evidence about its platform and runtime
-    > (e.g., TDX/SEV quotes).
+- **Attester:** Produces Evidence about its platform and runtime
+  (e.g., TDX/SEV quotes).
 
--   **Verifier:** Evaluates Evidence (using policies, endorsements, and
-    > reference values) and produces Attestation Results.
+- **Verifier:** Evaluates Evidence (using policies, endorsements, and
+  reference values) and produces Attestation Results.
 
--   **Relying Party:** Consumes Attestation Results to decide whether to
-    > trust the Attester for a given action.
+- **Relying Party:** Consumes Attestation Results to decide whether to
+  trust the Attester for a given action.
 
--   **Relying Party Owner:** Configures the Relying Party's appraisal
-    > policy (typically an administrator).
+- **Relying Party Owner:** Configures the Relying Party's appraisal
+  policy (typically an administrator).
 
--   **Verifier Owner:** Configures the Verifier's appraisal policy and
-    > trusted inputs (typically an administrator).
+- **Verifier Owner:** Configures the Verifier's appraisal policy and
+  trusted inputs (typically an administrator).
 
--   **Endorser:** Provides Endorsements (e.g., manufacturer keys) that
-    > help Verifiers authenticate Evidence.
+- **Endorser:** Provides Endorsements (e.g., manufacturer keys) that
+  help Verifiers authenticate Evidence.
 
--   **Reference Value Provider:** Supplies expected reference values
-    > (trusted measurements or claims) that Verifiers use to appraise
-    > Evidence.
+- **Reference Value Provider:** Supplies expected reference values
+  (trusted measurements or claims) that Verifiers use to appraise
+  Evidence.
 
-*3.2. Remote Attestation Deployment Patterns*
+#### Remote Attestation Deployment Patterns (IETF RATS)
 
-IETF RATS has two deployment patterns.
+1. Passport Model:
 
-**Passport Model:**
+    - *Concept:* Attester obtains a signed token from a trusted local
+      authority and presents that token to Relying Parties to assert
+      identity/claims.
 
--   *Concept:* Attester obtains a signed token from a trusted local
-    > authority and presents that token to Relying Parties to assert
-    > identity/claims.
+    - *Flow:* Attester → Authority/Verifier issues token → Attester
+      presents token → Relying Party validates.
 
--   *Flow:* Attester → Authority/Verifier issues token → Attester
-    > presents token → Relying Party validates.
+    - *Properties:* Attester-held, portable, authority-bound.
 
--   *Properties:* Attester-held, portable, authority-bound.
+    - *Pros:* Low-latency verification, useful offline or across domains.
 
--   *Pros:* Low-latency verification, useful offline or across domains.
+    - *Cons:* Harder revocation/freshness control; requires Relying
+      Parties to trust the issuer.
 
--   *Cons:* Harder revocation/freshness control; requires Relying
-    > Parties to trust the issuer.
+    - *Typical use:* Cross-organization attestation and client-side
+      presentation of platform claims.
 
--   *Typical use:* Cross-organization attestation and client-side
-    > presentation of platform claims.
+    - *Reference:* RFC 9334 §5.1
 
--   *Reference:* RFC 9334 §5.1
+    ![](../assets/runtime-isolation10.png)
 
-![](../assets/runtime-isolation10.png)
+2. Background Check Model:
 
-**Background Check Model:**
+    - *Concept*: Relying Party forwards Attester‑provided Evidence to a
+      Verifier, which appraises it and returns an Attestation Result;
+      the Relying Party then applies its own policy to that result.
 
--   *Concept*: Relying Party forwards Attester‑provided Evidence to a
-    > Verifier, which appraises it and returns an Attestation Result;
-    > the Relying Party then applies its own policy to that result.
+    - *Flow*: Attester → Relying Party (forwards Evidence) → Verifier
+      (appraises) → Relying Party (evaluates Attestation Result).
 
--   *Flow*: Attester → Relying Party (forwards Evidence) → Verifier
-    > (appraises) → Relying Party (evaluates Attestation Result).
+    - *Properties*: Relying Party treats Evidence as opaque; verification
+      is centralized at the Verifier.
 
--   *Properties*: Relying Party treats Evidence as opaque; verification
-    > is centralized at the Verifier.
+    - *Pros*: Centralized, consistent appraisal; real‑time freshness and
+      easier revocation; simpler Relying Party logic.
 
--   *Pros*: Centralized, consistent appraisal; real‑time freshness and
-    > easier revocation; simpler Relying Party logic.
+    - *Cons*: Added latency and dependency on an online Verifier;
+      potential verifier bottleneck and targeted attack surface.
 
--   *Cons*: Added latency and dependency on an online Verifier;
-    > potential verifier bottleneck and targeted attack surface.
+    - *Typical use*: Environments that prefer centralized trust and live
+      verification (e.g., enterprise services, dynamic access control).
 
--   *Typical use*: Environments that prefer centralized trust and live
-    > verification (e.g., enterprise services, dynamic access control).
+    - *Reference*: RFC 9334 §5.2.
 
--   *Reference*: RFC 9334 §5.2.
+    ![](../assets/runtime-isolation8.png)
 
-![](../assets/runtime-isolation8.png)
+#### MCP Protocol Extensions
 
-**MCP Protocol Extensions**
+- *Focus*: This extension targets the Passport model as the primary
+  attestation pattern.
 
--   *Focus*: This extension targets the Passport model as the primary
-    > attestation pattern.
+- *Why*: Passport tokens enable reuse, lower latency, reduced verifier
+  load, better scaling, and lower cost.
 
--   *Why*: Passport tokens enable reuse, lower latency, reduced verifier
-    > load, better scaling, and lower cost.
+- *Background Check*: Not the default, but can be supported when
+  needed.
 
--   *Background Check*: Not the default, but can be supported when
-    > needed.
+- *When to use Background Check*: per-request verification,
+  highest-security deployments, or when a client mandates a specific
+  attestation provider.
 
--   *When to use Background Check*: per-request verification,
-    > highest-security deployments, or when a client mandates a specific
-    > attestation provider.
+- *Implication*: Default workflows assume reusable tokens; add
+  Background Check only for scenarios that require live, per-client
+  verification.
 
--   *Implication*: Default workflows assume reusable tokens; add
-    > Background Check only for scenarios that require live, per-client
-    > verification.
+### Security Risks Mitigated
 
-### 4. Security Risks Mitigated
+- *Inadequate data protection & confidentiality (MCP‑T5)* : TEEs encrypt memory
+  and isolate runtime, preventing extraction of in‑use secrets (API keys,
+  tokens) via host OS or memory dumps.
 
-4.1. *Inadequate data protection & confidentiality (MCP‑T5)* : TEEs
-encrypt memory and isolate runtime, preventing extraction of in‑use
-secrets (API keys, tokens) via host OS or memory dumps.
+  Note: Attestation shows the server hasn't been modified to exfiltrate secrets
+  but does not enforce secure secret handling in application code.
 
-*Note:* Attestation shows the server hasn't been modified to exfiltrate
-secrets but does not enforce secure secret handling in application code.
+- *Missing integrity/verification controls (MCP‑T6):* Measurement verification
+  and attestation prove the VM/container and deployed components match expected
+  measurements, assuring clients they talk to untampered servers.
 
-4.2. *Missing integrity/verification controls (MCP‑T6):* Measurement
-verification and attestation prove the VM/container and deployed
-components match expected measurements, assuring clients they talk to
-untampered servers.
+- *Trust‑boundary and privilege failures (MCP‑T9):* Running clients and servers
+  in TEEs removes the host OS, firmware, and hypervisor from the trust
+  boundary, mitigating privileged‑host attacks against MCP components.
 
--   
+- *Improper multitenancy:* Per‑tenant TEEs provide cryptographic isolation so
+  one tenant's server cannot read another's memory on the same physical host.
 
-4.3. *Trust‑boundary and privilege failures (MCP‑T9):* Running clients
-and servers in TEEs removes the host OS, firmware, and hypervisor from
-the trust boundary, mitigating privileged‑host attacks against MCP
-components.
+  Caveat: isolation reduces direct memory attacks; side‑channel risks require
+  additional mitigations.
 
--   
-
-4.4. *Improper multitenancy:* Per‑tenant TEEs provide cryptographic
-isolation so one tenant's server cannot read another's memory on the
-same physical host.
-
-*Caveat:* isolation reduces direct memory attacks; side‑channel risks
-require additional mitigations.
-
-### 5. Deployment Scenario
+### Deployment Scenario
 
 The deployment of components in an MCP Client-Server architecture in the
 context of Confidential Computing could involve two different deployment
@@ -753,62 +705,54 @@ scenarios.
 
 #### Scenario 1 - MCP Server Attestation (Servers in TEEs):
 
--   *Description:* MCP servers run inside TEEs; clients verify the
-    > server's attestation before interacting or sharing sensitive data.
+- *Description:* MCP servers run inside TEEs; clients verify the
+  server's attestation before interacting or sharing sensitive data.
 
--   *Flow:* Client requests/validates attestation → if trusted, client
-    > proceeds to call tools or share data.
+- *Flow:* Client requests/validates attestation → if trusted, client
+  proceeds to call tools or share data.
 
--   *When used:* Clients that expose sensitive resources (e.g., Roots
-    > access to local filesystem) or need assurance that a server won't
-    > exfiltrate shared secrets.
+- *When used:* Clients that expose sensitive resources (e.g., Roots
+  access to local filesystem) or need assurance that a server won't
+  exfiltrate shared secrets.
 
--   *Benefits:* Ensures data sent to the server is processed in a
-    > hardware-isolated environment; reduces risk from a compromised
-    > host or hypervisor.
+- *Benefits:* Ensures data sent to the server is processed in a
+  hardware-isolated environment; reduces risk from a compromised
+  host or hypervisor.
 
--   *Caveats:* Trust depends on correct attestation validation and token
-    > freshness; application-level secret handling still matters.
+- *Caveats:* Trust depends on correct attestation validation and token
+  freshness; application-level secret handling still matters.
 
-![](../assets/runtime-isolation3.jpg)
-
-> Fig. MCP servers being attested
+  ![Fig. MCP servers being attested](../assets/runtime-isolation3.jpg)
 
 #### Scenario 2 - Mutual Attestation (Clients and Servers in TEEs):
 
--   Description: Both MCP clients and servers run in TEEs and perform
-    > mutual attestation before any interaction.
+- Description: Both MCP clients and servers run in TEEs and perform mutual
+  attestation before any interaction.
 
--   Flow: Each side obtains/validates attestation tokens for the other →
-    > only if both are trusted do they exchange data, invoke tools, or
-    > perform sampling.
+- Flow: Each side obtains/validates attestation tokens for the other → only if
+  both are trusted do they exchange data, invoke tools, or perform sampling.
 
--   When to use: High‑security deployments where servers need safe
-    > access to client resources (files, logs) or where clients receive
-    > sensitive prompts for generation/sampling.
+- When to use: High‑security deployments where servers need safe access to
+  client resources (files, logs) or where clients receive sensitive prompts for
+  generation/sampling.
 
--   Benefits: End‑to‑end in‑use protection; prevents exfiltration or
-    > tampering from either side; enables safe use of privileged client
-    > capabilities.
+- Benefits: End‑to‑end in‑use protection; prevents exfiltration or tampering
+  from either side; enables safe use of privileged client capabilities.
 
--   Caveats: More complex setup, higher latency and token management
-    > overhead, need for coordinated trust policies; application code
-    > and side‑channel mitigations remain important.
+- Caveats: More complex setup, higher latency and token management overhead,
+  need for coordinated trust policies; application code and side‑channel
+  mitigations remain important.
 
-![](../assets/runtime-isolation5.jpg)
+![Fig. Mutual Attestation](../assets/runtime-isolation5.jpg)
 
-Fig. Mutual Attestation
-
-### 6. High Level Architecture
+### High Level Architecture
 
 This architecture covers server-side attestation in TEEs under the
 Passport model; attestation is preferably initiated on client
 initialization to avoid unnecessary verification on every service
 restart, and client attestation is an optional extension.
 
-![](../assets/runtime-isolation2.jpg)
-
-Fig. Attestation of MCP Servers using Passport mode
+![Fig. Attestation of MCP Servers using Passport mode](../assets/runtime-isolation2.jpg)
 
 *Standard flow:* The MCP server requests a signed nonce from the
 Attestation Service, produces a TEE quote containing that nonce, and
@@ -832,7 +776,7 @@ Limitations: attestation proves runtime integrity and freshness but does
 not ensure secure application logic or protection against side channels,
 so application-level security practices remain necessary.
 
-#### 6.1. Extension of the flow to support client specific token
+#### Extension of the flow to support client specific token
 
 *Client-specific tokens (Using the Background model):* For per-session
 freshness, a client supplies a nonce in its initialization request, the
@@ -841,201 +785,128 @@ Service verifies the quote contains that nonce before issuing a
 client-specific JWT that must be validated by the client and not reused
 across other sessions.
 
-#### 6.2. Sequence Diagram
+#### Sequence Diagram
 
 ![](../assets/runtime-isolation6.jpg)
 
-### 7. Protocol Extension Details
+### Protocol Extension Details
 
 There are primarily 2 types of communication modes(transports) in MCP:
 
-1.  *HTTP SSE*: This transport runs over HTTPS and is suited for remote
-    > or cloud MCP servers. A client posts an initialize request to the
-    > server's /mcp endpoint and can ask for attestation by including an
-    > Attestation header with client-id and optional nonce; the server
-    > replies with an Attestation-Token header carrying the signed JWT
-    > and the JSON-RPC initialize result. In this http based extension
-    > to RATS, the client requests for an attestation from the MCP
-    > server by adding the WWW-Attest header with client specific
-    > details like client ID,nonce(optional) etc.
+1. *HTTP SSE*: This transport runs over HTTPS and is suited for remote or cloud
+MCP servers. A client posts an initialize request to the server's /mcp endpoint
+and can ask for attestation by including an Attestation header with client-id
+and optional nonce; the server replies with an Attestation-Token header
+carrying the signed JWT and the JSON-RPC initialize result. In this http based
+extension to RATS, the client requests for an attestation from the MCP server
+by adding the WWW-Attest header with client specific details like client
+ID,nonce(optional) etc.
 
-**Client Request:\
-**
+    **Client Request:**
 
-\`\`\`http
+    ```http
+    POST /mcp HTTP/1.1
+    Host: example.com
+    Attestation: require; client-id="mcp-client-<id>"; nonce="<nonce>"
+    Content-Type: application/json
+    Content-Length: 173
 
-> POST /mcp HTTP/1.1
->
-> Attestation: require; client-id="mcp-client-\<id\>"; nonce="\<nonce\>"
->
-> Content-Type: application/json
->
-> {
->
-> \"jsonrpc\": \"2.0\",
->
-> \"id\": 1,
->
-> \"method\": \"initialize\",
->
-> \"params\": {
->
-> \"protocolVersion\": \"2025-06-18\",
->
-> \"capabilities\": {},
->
-> \"clientInfo\": {
->
-> \"name\": \"client\",
->
-> \"version\": \"1.0.0\"
->
-> }
->
-> }
->
-> }
+    {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "2026-05-06",
+        "capabilities": {},
+        "clientInfo": {
+          "name": "client",
+          "version": "1.0.0"
+        }
+      }
+    }
+    ```
 
-\`\`\`
+    **Server response:**
 
-**Server response:**
+    ```http
+    HTTP/1.1 200 OK
+    Attestation-Token: eyJhbGciOiJQUzM4NCIsImprdSI6Imh0dHA6Ly9kdW1teS51cm...
+    Content-Type: application/json
+    Content-Length: 258
 
-\`\`\`http
+    {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "protocolVersion": "2026-05-06",
+        "capabilities": {
+          "tools": {},
+          "resources": {}
+        },
+        "serverInfo": {
+          "name": "example-server",
+          "version": "1.0.0"
+        }
+      }
+    }
+    ```
 
-**Attestation-Token:
-eyJhbGciOiJQUzM4NCIsImprdSI6Imh0dHA6Ly9kdW1teS51cm\...**
+2. *Stdio:* This transport uses stdin/stdout pipes for a locally launched
+server process and is intended for local, trusted parent/subprocess scenarios.
+The client includes attestation metadata in the initialize params (e.g.,
+\_meta: {attestation: required, realm: \"mcp-client-\", nonce: \"\"}), and the
+server returns the attestation_token inside the result's \_meta field along
+with the initialize result.
 
-Content-Type: application/json
+    **Client request**:
 
-> {
->
-> \"jsonrpc\": \"2.0\",
->
-> \"id\": 1,
->
-> \"result\": {
->
-> \"protocolVersion\": \"2025-06-18\",
->
-> \"capabilities\": {
->
-> \"tools\": {},
->
-> \"resources\": {}
->
-> },
->
-> \"serverInfo\": {
->
-> \"name\": \"example-server\",
->
-> \"version\": \"1.0.0\"
->
-> }
->
-> }
->
-> }
+    ```JSON
+    {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "initialize",
+      "params": {
+        "_meta": {
+          "attestation": "required",
+          "realm": "mcp-client-<id>",
+          "nonce": "<nonce>"
+        },
+        "protocolVersion": "2026-05-06",
+        "capabilities": {},
+        "clientInfo": {
+          "name": "client",
+          "version": "1.0.0"
+        }
+      }
+    }
 
-\`\`\`
+    ```
 
-2.  **Stdio:** This transport uses stdin/stdout pipes for a locally
-    > launched server process and is intended for local, trusted
-    > parent/subprocess scenarios. The client includes attestation
-    > metadata in the initialize params (e.g., \_meta: {attestation:
-    > required, realm: \"mcp-client-\", nonce: \"\"}), and the server
-    > returns the attestation_token inside the result's \_meta field
-    > along with the initialize result.
+    **Server response:**
 
-> **Client request**:\
-> \
-> \`\`\`i/o
->
-> Content-Type: application/json
->
-> {
->
-> \"jsonrpc\": \"2.0\",
->
-> \"id\": 1,
->
-> \"method\": \"initialize\",
->
-> \"params\": {
->
-> \"\_meta\": {
->
-> "attestation\": required,
->
-> "realm": "mcp-client-\<id\>",
->
-> "nonce": "\<nonce\>"
->
-> },
->
-> \"protocolVersion\": \"2025-06-18\",
->
-> \"capabilities\": {},
->
-> \"clientInfo\": {
->
-> \"name\": \"client\",
->
-> \"version\": \"1.0.0\"
->
-> }
->
-> }
->
-> }
+    ```JSON
+    {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "_meta": {
+          "attestation_token": "eyJhbGciOiJQUzM4N..."
+        },
+        "protocolVersion": "2025-06-18",
+        "capabilities": {
+          "tools": {},
+          "resources": {}
+        },
+        "serverInfo": {
+          "name": "example-server",
+          "version": "1.0.0"
+        }
+      }
+    }
 
-\`\`\`
+    ```
 
-> **Server response:**
->
-> \`\`\`i/o
->
-> Content-Type: application/json
->
-> {
->
-> \"jsonrpc\": \"2.0\",
->
-> \"id\": 1,
->
-> \"result\": {
->
-> \"\_meta\": {
->
-> "attestation_token\": \"eyJhbGciOiJQUzM4N\...\"
->
-> },
->
-> \"protocolVersion\": \"2025-06-18\",
->
-> \"capabilities\": {
->
-> \"tools\": {},
->
-> \"resources\": {}
->
-> },
->
-> \"serverInfo\": {
->
-> \"name\": \"example-server\",
->
-> \"version\": \"1.0.0\"
->
-> }
->
-> }
->
-> }
->
-> \`\`\`
-
-### 8. Reference Architecture with Deployment instructions
+### Reference Architecture with Deployment instructions
 
 This section presents a reference architecture, deployment guidance, and
 reference code demonstrating how to deploy an MCP client and an MCP
@@ -1048,27 +919,25 @@ operations are delegated to the server only after attestation.
 
 Prerequisites and assumptions:
 
--   Azure subscription with capacity for Confidential VMs (DC2es_v6 or
-    > equivalent).
+- Azure subscription with capacity for Confidential VMs (DC2es_v6 or
+  equivalent).
 
--   SSH key-based access to VMs and appropriate RBAC permissions to
-    > create VMs and networking.
+- SSH key-based access to VMs and appropriate RBAC permissions to
+  create VMs and networking.
 
--   ITA (Intel Trust Authority) API key and service access for
-    > attestation.
+- ITA (Intel Trust Authority) API key and service access for
+  attestation.
 
--   Recommended OS: Ubuntu 22.04 or later on VMs.
+- Recommended OS: Ubuntu 22.04 or later on VMs.
 
--   Network connectivity between client VM, TDVM, and any LLM host
-    > (appropriate NSG and firewall rules).
+- Network connectivity between client VM, TDVM, and any LLM host
+  (appropriate NSG and firewall rules).
 
--   Local Ollama installation for LLM serving (if running locally).
+- Local Ollama installation for LLM serving (if running locally).
 
-#### 8.1. Reference architecture
+#### Reference architecture
 
-![](../assets/runtime-isolation4.jpg)
-
-Fig. Reference MCP attestation architecture using Azure TDVM and ITA
+![Fig. Reference MCP attestation architecture using Azure TDVM and ITA](../assets/runtime-isolation4.jpg)
 
 As illustrated, the MCP client and a local Ollama LLM (model: llama3.2)
 run on a standard Azure VM. The MCP client queries the local LLM for
@@ -1081,17 +950,15 @@ server obtains platform attestation evidence (TDX quote) and exchanges
 it with an attestation provider (Intel Trust Authority) to receive a
 signed attestation token.
 
-8.1.1. Use case example
-
 A common pattern is to use Ollama/llama3.2 locally for routine inference
 and light on-device tuning, while invoking protected server-side tools
 for sensitive tasks. Examples of server-side tools:
 
--   Tool A --- secure data-store access or private dataset processing
+- Tool A --- secure data-store access or private dataset processing
 
--   Tool B --- signing/key services or cryptographic operations
+- Tool B --- signing/key services or cryptographic operations
 
--   Tool C --- orchestrated fine-tuning on protected resources
+- Tool C --- orchestrated fine-tuning on protected resources
 
 Before invoking any of these server-side tools, the client might require
 proof that the server is executing inside a confidential environment.
@@ -1100,21 +967,21 @@ the token (JWT signature and claims) does the client proceed with
 requests to protected endpoints. If validation fails, the client
 terminates the session.
 
-Attestation flow (high level)
+Attestation flow (high level):
 
--   MCP server generates TDX evidence (quote).
+- MCP server generates TDX evidence (quote).
 
--   Server submits evidence to ITA.
+- Server submits evidence to ITA.
 
--   ITA validates the evidence and returns a signed attestation token
-    > (or an error).
+- ITA validates the evidence and returns a signed attestation token
+  (or an error).
 
--   Server caches the token and includes it in responses when requested.
+- Server caches the token and includes it in responses when requested.
 
--   Client validates the token and continues only if validation
-    > succeeds.
+- Client validates the token and continues only if validation
+  succeeds.
 
-#### 8.2. Creating a TD VM on Azure
+#### Creating a TD VM on Azure
 
 To host the MCP server in a trusted execution environment, create an
 Azure Trusted Domain VM (TDVM). Azure DC2es_v6 VMs support Intel TDX for
@@ -1122,470 +989,359 @@ hardware-based isolation.
 
 Following are the steps to create a TDVM on Azure:
 
-A.  Select VM Size:\
-    > Choose the DCes v6 VM series, which supports TDX.\
-    > Example:
-
-    a.  VM size: DC2es_v6
-
-    b.  Region: East US, West Europe (check Azure for supported regions)
+A. Select VM Size, choose the DCes v6 VM series, which supports TDX. Example:
 
 ![](../assets/runtime-isolation11.png)
 
-B.  Create the VM:
+B. Create the VM:
 
-    a.  Go to Azure Portal → Create a Virtual Machine
+   a. Go to Azure Portal → Create a Virtual Machine
 
-    b.  Select the DC2es_v6 size
+   b. Select the DC2es_v6 size
 
-    c.  Choose an appropriate OS image (Ubuntu 22.04 or later
-        > recommended)
+   c. Choose an appropriate OS image (Ubuntu 22.04 or later recommended)
 
-    d.  Enable "Confidential VM" option
+   d. Enable "Confidential VM" option
 
 ![](../assets/runtime-isolation7.png)
 
-C.  Configure Networking and Security:
+C. Configure Networking and Security:
 
-    a.  Set up a virtual network and subnet
+   a. Set up a virtual network and subnet
 
-    b.  Configure inbound/outbound rules as needed
+   b. Configure inbound/outbound rules as needed
 
-    c.  Optionally, enable Azure Managed Identity for secure access
+   c. Optionally, enable Azure Managed Identity for secure access
 
-D.  Provision and Connect:
+D. Provision and Connect:
 
-    a.  Review and create the VM
+   a. Review and create the VM
 
-    b.  Once deployed, connect via SSH
+   b. Once deployed, connect via SSH
 
-E.  Verify TDX Support:\
-    > On the TDVM, run: ***dmesg \| grep -i tdx*** or ***lsmod \| grep
-    > tdx*** to confirm TDX modules are present.
+E. Verify TDX Support:\
+   On the TDVM, run: `dmesg | grep -i tdx` or `lsmod | grep tdx` to
+   confirm TDX modules are present.
 
 ![](../assets/runtime-isolation1.png)
 
 Note:
 
--   Ensure your subscription supports Confidential VMs.
+- Ensure your subscription supports Confidential VMs.
 
--   For production, configure disk encryption and additional security
-    > settings.
+- For production, configure disk encryption and additional security settings.
 
-#### 8.3. Deploying your MCP applications in Azure VMs
+#### Deploying your MCP applications in Azure VMs
 
 After provisioning the Azure VMs, deploy the MCP client, MCP server, and
 Ollama LLM as follows:
 
 A. Copying Application Binaries:
 
--   Use scp to transfer the MCP client and server binaries to their
-    > respective VMs:
-
-    -   MCP client → Standard Azure VM
-
-    -   MCP server → Azure TDVM (DC2es v6)
+- Use scp to transfer the MCP client and server binaries to their respective VMs:
+  - MCP client → Standard Azure VM
+  - MCP server → Azure TDVM (DC2es v6)
 
 Example commands:
 
-> \# Copy MCP client binary to normal VM
->
-> scp mcp-client \<username\>@\<client-vm-ip\>:/home/azureuser/
->
-> \# Copy MCP server binary to TDVM
->
-> scp mcp-server \<username\>@\<tdvm-ip\>:/home/azureuser/
->
-> \# Install Ollama
->
-> curl -fsSL https://ollama.com/install.sh \| sh
+```bash
+# Copy MCP client binary to normal VM
+scp mcp-client <username>@<client-vm-ip>:/home/azureuser/
+
+# Copy MCP server binary to TDVM
+scp mcp-server <username>@<tdvm-ip>:/home/azureuser/
+
+# Install Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+```
 
 B. Running the Applications:
 
--   SSH into each VM and start the respective services:
+- SSH into each VM and start the respective services:
 
-> #start the MCP server
->
-> ./mcp-server \--config mcp-server-config.json \--port 8081
->
-> #Start the LLM
->
-> ollama serve \--model llama3.2
+```bash
+#start the MCP server
+./mcp-server --config mcp-server-config.json --port 8081
+
+#Start the LLM
+ollama serve --model llama3.2
+```
 
 C. Networking and Connectivity:
 
--   Ensure the VMs can communicate with each other:
+- Ensure the VMs can communicate with each other:
 
-    -   Open necessary ports (e.g., 8080 for MCP server, 11434 for
-        > Ollama)
+  - Open necessary ports (e.g., 8080 for MCP server, 11434 for Ollama)
 
-    -   Configure firewall rules and Azure Network Security Groups
+  - Configure firewall rules and Azure Network Security Groups
 
 D. Validation:
 
--   Test connectivity between MCP client, server, and LLM
+- Test connectivity between MCP client, server, and LLM
 
--   Confirm the MCP server attestation workflow is functional
+- Confirm the MCP server attestation workflow is functional
 
 Note:
 
--   For production, use secure transfer methods and restrict access via
-    > SSH keys and firewall rules.
+- For production, use secure transfer methods and restrict access via
+  SSH keys and firewall rules.
 
--   Consider using Azure Managed Identity and Key Vault for secrets
-    > management.
+- Consider using Azure Managed Identity and Key Vault for secrets management.
 
 E. Running the MCP client
 
-> ./mcp-client \--config mcp-client-config.json \--query \"Subtract 4
-> from 2\"
+```bash
+./mcp-client --config mcp-client-config.json --query "Subtract 4 from 2"
+```
 
 #### 8.4. Sample Configurations
 
 A.  Client configuration:
 
+```JSON
 {
-
-\"llm\": {
-
-\"apiKey\": \"\<api-key\>\",
-
-\"baseUrl\": \"\<LLM base URL\>\",
-
-\"model\": \"llama3.2\"
-
-},
-
-\"mcp\": {
-
-\"serverUrl\": \"\<MCP server URL\>\"
-
-},
-
-\"attestation\": {
-
-\"mode\": \"require\" //Controls if client needs attestation
-
+  "llm": {
+    "apiKey": "<api-key>",
+    "baseUrl": "<LLM base URL>",
+    "model": "llama3.2"
+  },
+  "mcp": {
+    "serverUrl": "<MCP server URL>"
+  },
+  "attestation": {
+    "mode": "require"
+  }
 }
-
-}
+```
 
 B.  Server Configuration:
 
+```JSON
 {
-
-\"server\": {
-
-\"port\": \"8081"
-
-},
-
-\"attestation\": {
-
-\"type\": \"ita\",
-
-\"ita\": {
-
-\"baseUrl\": \"https://portal.trustauthority.intel.com\",
-
-\"apiUrl\": \"https://api.trustauthority.intel.com\",
-
-\"apiKey\": \"\<your-ita-api-key\>\"
-
+  "server": {
+    "port": "8081"
+  },
+  "attestation": {
+    "type": "ita",
+    "ita": {
+      "baseUrl": "https://portal.trustauthority.intel.com",
+      "apiUrl": "https://api.trustauthority.intel.com",
+      "apiKey": "<your-ita-api-key>"
+    }
+  }
 }
+```
 
-}
+### Reference Implementation
 
-}
+#### MCP client Reference code
 
-### 9. Reference Implementation
+- *Requesting attestation token*: On every request, the client
+  indicates it requires attestation by setting the Attestation:
+  require header. This instructs the server to include an
+  attestation token in the response.
 
-#### 9.1. MCP client Reference code
-
--   *Requesting attestation token*: On every request, the client
-    > indicates it requires attestation by setting the Attestation:
-    > require header. This instructs the server to include an
-    > attestation token in the response.
-
-// Add \"Attestation: require\" header
+```
+// Add "Attestation: require" header
 
 if t.client.attestationConfig != nil && t.client.attestationConfig.Mode
-== \"require\" {
+== "require" { req.Header.Set("Attestation", "require") }
+```
 
-req.Header.Set(\"Attestation\", \"require\")
+- *Validating the attestation token*: When the server returns a
+  response, the client checks for an \"Attestation-Token\" header if
+  attestation was required. If missing or invalid, the client closes
+  the session and reports an error. If valid, the client proceeds.
 
-}
-
--   *Validating the attestation token*: When the server returns a
-    > response, the client checks for an \"Attestation-Token\" header if
-    > attestation was required. If missing or invalid, the client closes
-    > the session and reports an error. If valid, the client proceeds.
-
+```
 // Check for attestation token in response (if attestation is required)
+if t.client.attestationConfig != nil && t.client.attestationConfig.Mode == "require" {
+	token := resp.Header.Get("Attestation-Token")
 
-if t.client.attestationConfig != nil && t.client.attestationConfig.Mode
-== \"require\" {
+	if token == "" {
+		// Token missing - terminate session
+		resp.Body.Close()
 
-token := resp.Header.Get(\"Attestation-Token\")
+		// Close session if it exists
+		if t.client.session != nil {
+			t.client.session.Close()
+			t.client.session = nil
+		}
+		t.client.initialized = false
+		return nil, fmt.Errorf("server attestation required but Attestation-Token header missing")
+	}
 
-if token == \"\" {
+	// Token present - validate it
+	if err := t.client.validateAttestationToken(token); err != nil {
+		resp.Body.Close()
 
-// Token missing - terminate session
-
-resp.Body.Close()
-
-// Close session if it exists
-
-if t.client.session != nil {
-
-t.client.session.Close()
-
-t.client.session = nil
-
+		// Close session
+		if t.client.session != nil {
+			t.client.session.Close()
+			t.client.session = nil
+		}
+		t.client.initialized = false
+		return nil, fmt.Errorf("attestation token validation failed: %w", err)
+	}
 }
+```
 
-t.client.initialized = false
+#### MCP server reference code
 
-return nil, fmt.Errorf(\"server attestation required but
-Attestation-Token header missing\")
+- *Adding the attestation header*: The server inspects incoming
+  requests for the \"Attestation\" header. If the client requires
+  attestation, the server ensures it has a valid attestation token
+  (or fetches a new one), caches it with its expiry, and includes it
+  on responses.
 
-}
-
-// Token present - validate it
-
-if err := t.client.validateAttestationToken(token); err != nil {
-
-resp.Body.Close()
-
-// Close session
-
-if t.client.session != nil {
-
-t.client.session.Close()
-
-t.client.session = nil
-
-t.client.initialized = false
-
-}
-
-return nil, fmt.Errorf(\"attestation token validation failed: %w\", err)
-
-}
-
-}
-
-#### 9.2. MCP server reference code
-
--   *Adding the attestation header*: The server inspects incoming
-    > requests for the \"Attestation\" header. If the client requires
-    > attestation, the server ensures it has a valid attestation token
-    > (or fetches a new one), caches it with its expiry, and includes it
-    > on responses.
-
+```
 // Check if client requires attestation (on any request)
+attestHeader := r.Header.Get("Attestation")
 
-attestHeader := r.Header.Get(\"Attestation\")
+if attestHeader == "require" {
+	now := time.Now().Unix()
 
-if attestHeader == \"require\" {
+	// If no token or expired, fetch new
+	if m.token == nil || now >= m.expires {
+		var token *string
+		var err error
 
-now := time.Now().Unix()
+		switch m.cfg.Type {
+		case "ita":
+			token, err = ita.GetAttestationToken(m.cfg.ITA)
+		default:
+			http.Error(w, "unsupported attestation type: "+m.cfg.Type, http.StatusInternalServerError)
+			return
+		}
 
-// If no token or expired, fetch new
+		if err != nil {
+			log.Printf("ERROR: Failed to get attestation token: %+v", err)
+			http.Error(w, "Failed to get attestation token: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-if m.token == nil \|\| now \>= m.expires {
-
-var token \*string
-
-var err error
-
-switch m.cfg.Type {
-
-case \"ita\":
-
-token, err = ita.GetAttestationToken(m.cfg.ITA)
-
-default:
-
-http.Error(w, \"unsupported attestation type: \"+m.cfg.Type,
-http.StatusInternalServerError)
-
-return
-
-}
-
-if err != nil {
-
-log.Printf(\"ERROR: Failed to get attestation token: %+v\", err)
-
-http.Error(w, \"Failed to get attestation token: \"+err.Error(),
-http.StatusInternalServerError)
-
-return
-
-}
-
-m.token = token
-
-// Parse JWT expiry
-
-m.expires = parseJWTExpiry(\*token)
-
-log.Printf(\"Fetched new attestation token, expires at %s\",
-time.Unix(m.expires, 0).Format(time.RFC3339))
-
-} else {
-
-log.Printf(\"Using cached attestation token, expires at %s\",
-time.Unix(m.expires, 0).Format(time.RFC3339))
-
-}
-
+		m.token = token
+		// Parse JWT expiry
+		m.expires = parseJWTExpiry(*token)
+		log.Printf("Fetched new attestation token, expires at %s", time.Unix(m.expires, 0).Format(time.RFC3339))
+	} else {
+		log.Printf("Using cached attestation token, expires at %s", time.Unix(m.expires, 0).Format(time.RFC3339))
+	}
 }
 
 // Wrap the ResponseWriter to add attestation token to all responses
-
 wrappedWriter := &attestationResponseWriter{
-
-ResponseWriter: w,
-
-middleware: m,
-
+	ResponseWriter: w,
+	middleware:     m,
 }
+```
 
--   *Generating a quote and getting it verified by ITA:* The sample uses
-    > Intel Trust Authority Go SDK components (go-aztdx, go-connector,
-    > go-tpm) to build evidence, send it to ITA, and receive a signed
-    > attestation token. The trustauthority-client sdk is present at:
-    > [[https://github.com/intel/trustauthority-client]{.underline}](https://github.com/intel/trustauthority-client)
+- *Generating a quote and getting it verified by ITA:* The sample uses
+  Intel Trust Authority Go SDK components (go-aztdx, go-connector,
+  go-tpm) to build evidence, send it to ITA, and receive a signed
+  attestation token. The trustauthority-client sdk is present at:
+  [[https://github.com/intel/trustauthority-client]{.underline}](https://github.com/intel/trustauthority-client)
 
-/ GetAttestationToken fetches an attestation token from Intel Trust
-Authority
 
+```
+// GetAttestationToken fetches an attestation token from Intel Trust Authority
 // using the provided ITA configuration.
+func GetAttestationToken(itaCfg *serverconfig.ITAConfig) (*string, error) {
+	if itaCfg == nil {
+		return nil, fmt.Errorf("ita config is nil")
+	}
 
-func GetAttestationToken(itaCfg \*serverconfig.ITAConfig) (\*string,
-error) {
+	if itaCfg.BaseURL == "" || itaCfg.APIURL == "" || itaCfg.APIKey == "" {
+		return nil, fmt.Errorf("ita config is incomplete: baseUrl, apiUrl and apiKey are all required")
+	}
 
-if itaCfg == nil {
+	cfg := connector.Config{
+		BaseUrl:     itaCfg.BaseURL,
+		ApiUrl:      itaCfg.APIURL,
+		TlsCfg:      &tls.Config{},
+		ApiKey:      itaCfg.APIKey,
+		RetryConfig: &connector.RetryConfig{},
+	}
 
-return nil, fmt.Errorf(\"ita config is nil\")
+	log.Printf("Getting Attestation Token from %s", cfg.ApiUrl)
 
+	tpmFactory := tpm.NewTpmFactory()
+	tdxAdapter, err := aztdx.NewCompositeEvidenceAdapter(tpmFactory)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create evidence adapter: %w", err)
+	}
+
+	evidenceBuilder, err := connector.NewEvidenceBuilder(connector.WithEvidenceAdapter(tdxAdapter))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create evidence builder: %w", err)
+	}
+
+	evidence, err := evidenceBuilder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build evidence: %w", err)
+	}
+
+	connectorInstance, err := connector.New(&cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create connector: %w", err)
+	}
+
+	// Attesting with "azure" as the platform provider
+	response, err := connectorInstance.AttestEvidence(evidence, "azure", "")
+	if err != nil {
+		return nil, fmt.Errorf("attestation failed: %w", err)
+	}
+
+	return &response.Token, nil
 }
-
-if itaCfg.BaseURL == \"\" \|\| itaCfg.APIURL == \"\" \|\| itaCfg.APIKey
-== \"\" {
-
-return nil, fmt.Errorf(\"ita config is incomplete: baseUrl, apiUrl and
-apiKey are all required\")
-
-}
-
-cfg := connector.Config{
-
-BaseUrl: itaCfg.BaseURL,
-
-ApiUrl: itaCfg.APIURL,
-
-TlsCfg: &tls.Config{},
-
-ApiKey: itaCfg.APIKey,
-
-RetryConfig: &connector.RetryConfig{},
-
-}
-
-log.Printf(\"Getting Attestation Token from %s\", cfg.ApiUrl)
-
-tpmFactory := tpm.NewTpmFactory()
-
-tdxAdapter, err := aztdx.NewCompositeEvidenceAdapter(tpmFactory)
-
-if err != nil {
-
-return nil, fmt.Errorf(\"failed to create evidence adapter: %w\", err)
-
-}
-
-evidenceBuilder, err :=
-connector.NewEvidenceBuilder(connector.WithEvidenceAdapter(tdxAdapter))
-
-if err != nil {
-
-return nil, fmt.Errorf(\"failed to create evidence builder: %w\", err)
-
-}
-
-evidence, err := evidenceBuilder.Build()
-
-if err != nil {
-
-return nil, fmt.Errorf(\"failed to build evidence: %w\", err)
-
-}
-
-connectorInstance, err := connector.New(&cfg)
-
-if err != nil {
-
-return nil, fmt.Errorf(\"failed to create connector: %w\", err)
-
-}
-
-response, err := connectorInstance.AttestEvidence(evidence, \"azure\",
-\"\")
-
-if err != nil {
-
-return nil, fmt.Errorf(\"attestation failed: %w\", err)
-
-}
-
-return &response.Token, nil
-
-}
+```
 
 #### 9.3. Logs
 
--   Request
+- Request
 
-\[MCP-CLIENT\] Outgoing request: POST http://localhost:8081/mcp
+    ```
+    POST /mcp HTTP/1.1
+    Host: localhost:8081
+    Content-Type: application/json
+    Accept: application/json, text/event-stream
+    Attestation: require
+    Content-Length: 161
 
-\[MCP-CLIENT\] Request headers:
+    {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "initialize",
+      "params": {
+        "clientInfo": {
+          "name": "mcp-client",
+          "version": "1.0.0"
+        },
+        "protocolVersion": "2025-06-18",
+        "capabilities": {
+          "roots": {
+            "listChanged": true
+          }
+        }
+      }
+    }
+    ```
 
-Content-Type: application/json
+- Response
 
-Accept: application/json, text/event-stream
+    ```
+    HTTP/1.1 200 OK
+    Cache-Control: no-cache, no-transform
+    Connection: keep-alive
+    Content-Type: text/event-stream
+    Mcp-Session-Id: N5WL3UQEOQRXY5STLBEGXFPRW6
+    Date: Mon, 19 Jan 2026 09:05:49 GMT
+    Attestation-Token: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3N...
 
-**Attestation: require**
+    event: endpoint
+    data: /mcp?session_id=N5WL3UQEOQRXY5STLBEGXFPRW6
+    ```
 
-Request body:
+- Result
 
-{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"clientInfo\":{\"name\":\"mcp-client\",\"version\":\"1.0.0\"},\"protocolVersion\":\"2025-06-18\",\"capabilities\":{\"roots\":{\"listChanged\":true}}}}
-
--   Response
-
--   
-
-\[MCP-SERVER\] Response status: 200 OK
-
-\[MCP-SERVER\] Response headers:
-
-Cache-Control: no-cache, no-transform
-
-Connection: keep-alive
-
-Content-Type: text/event-stream
-
-Mcp-Session-Id: N5WL3UQEOQRXY5STLBEGXFPRW6
-
-Date: Mon, 19 Jan 2026 09:05:49 GMT
-
-**Attestation-Token:
-eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3N\... (length: 303)**
-
-\[MCP-CLIENT\] ✓ Attestation token validated
-
--   Result
-
-![](../assets/runtime-isolation9.png)
+    ![](../assets/runtime-isolation9.png)
