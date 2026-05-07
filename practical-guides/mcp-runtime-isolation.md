@@ -55,6 +55,7 @@ primitives to high-assurance hardware isolation
     - bubblewrap (Linux)
     - Seatbelt (macOS)
     - Endpoint Security library (macOS)
+    - WebAssembly
 
 - Cloud Environments
     - Amazon Bedrock AgentCore Runtime
@@ -226,7 +227,7 @@ compromised container from accessing the underlying host operating system.
 1. Create a dedicated user for MCP server processes:
 
    ```bash
-   sudo useradd -s /sbin/nologin -m -c \"MCP Server\" mcp
+   sudo useradd -s /sbin/nologin -m -c "MCP Server" mcp
    ```
 
 2. The user has read-write access to its home directory `/home/mcp`. For example, it can write notes in text files as memory, checkout github repos, and install software such as uv for Python environments.
@@ -253,7 +254,7 @@ compromised container from accessing the underlying host operating system.
   existing host networks, e.g., Internet
 
   ```bash
-  unshare \--user \--net mcp-server-proc
+  unshare --user --net mcp-server-proc
   ```
 
 - Create and configure Linux network namespaces for the MCP server and
@@ -262,7 +263,7 @@ compromised container from accessing the underlying host operating system.
 - Launch the MCP server process with only CPU 0 and 1:
 
    ```bash
-   systemd-run \--scope -p AllowedCPUs=0,1 mcp-server-proc
+   systemd-run --scope -p AllowedCPUs=0,1 mcp-server-proc
    ```
 
 ### Firecracker
@@ -854,7 +855,7 @@ ID,nonce(optional) etc.
 2. *Stdio:* This transport uses stdin/stdout pipes for a locally launched
 server process and is intended for local, trusted parent/subprocess scenarios.
 The client includes attestation metadata in the initialize params (e.g.,
-\_meta: {attestation: required, realm: \"mcp-client-\", nonce: \"\"}), and the
+\_meta: {attestation: required, realm: "mcp-client-", nonce: "\"}), and the
 server returns the attestation_token inside the result's \_meta field along
 with the initialize result.
 
@@ -1149,7 +1150,7 @@ if t.client.attestationConfig != nil && t.client.attestationConfig.Mode
 ```
 
 - *Validating the attestation token*: When the server returns a
-  response, the client checks for an \"Attestation-Token\" header if
+  response, the client checks for an "Attestation-Token" header if
   attestation was required. If missing or invalid, the client closes
   the session and reports an error. If valid, the client proceeds.
 
@@ -1189,7 +1190,7 @@ if t.client.attestationConfig != nil && t.client.attestationConfig.Mode == "requ
 #### MCP server reference code
 
 - *Adding the attestation header*: The server inspects incoming
-  requests for the \"Attestation\" header. If the client requires
+  requests for the "Attestation" header. If the client requires
   attestation, the server ensures it has a valid attestation token
   (or fetches a new one), caches it with its expiry, and includes it
   on responses.
